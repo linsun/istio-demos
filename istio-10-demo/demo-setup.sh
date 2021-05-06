@@ -15,7 +15,7 @@ run "cd istio-$TAG/bin/"
 desc "Display istioctl version"
 run "./istioctl version"
 
-desc "Check if it is same to install Istio 1.10"
+desc "Check if it is safe to install Istio 1.10"
 run "./istioctl x precheck"
 run "./istioctl analyze"
 
