@@ -4,10 +4,6 @@
 SOURCE_DIR=$PWD
 TAG="1.10.0-rc.0"
 
-desc "Validate web-api can be accessed from istio-ingressgateway"
-GATEWAY_IP=$(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
-desc "curl -H \"Host: istioinaction.io\" http://$GATEWAY_IP"
-
 desc "Display web-api endpoints and routes"
 run "cd istio-$TAG/bin/"
 run "./istioctl pc endpoint deploy/web-api -n istioinaction"

@@ -53,7 +53,12 @@ run "kubectl get pods -n istio-system"
 run "./istioctl proxy-status | grep istio-ingressgateway | awk '{print $7}'"
 
 desc "Validate web-api can be accessed from istio-ingressgateway"
+run "kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].ip}""
 GATEWAY_IP=$(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
 desc "curl -H \"Host: istioinaction.io\" http://$GATEWAY_IP"
+run "cd  ~/go/src/github.com/solo-io/workshops/terraform"
+run "vagrant ssh"
+
+
 
 
