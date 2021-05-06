@@ -14,7 +14,7 @@ run "./istioctl pc endpoint deploy/web-api -n istioinaction"
 run "./istioctl pc routes deploy/web-api -n istioinaction"
 
 desc "Label namespace istioinaction with istio-discovery=enabled"
-run "kubectl label namespace default istio-discovery=enabled"
+run "kubectl label namespace istioinaction istio-discovery=enabled"
 
 desc "Configure discovery selectors"
 run "cat ../../control-plane-w-discovery.yaml"
