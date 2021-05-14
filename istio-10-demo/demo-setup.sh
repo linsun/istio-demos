@@ -8,7 +8,7 @@ run "kubectl get services -n istio-system"
 run "kubectl get pods -A"
 
 desc "Let us download Istio $TAG"
-run "wget https://github.com/istio/istio/releases/download/1.10.0-rc.0/istio-$TAG-osx.tar.gz"
+run "wget https://github.com/istio/istio/releases/download/$TAG/istio-$TAG-osx.tar.gz"
 run "tar -xvf istio-$TAG-osx.tar.gz"
 run "cd istio-$TAG/bin/"
 
