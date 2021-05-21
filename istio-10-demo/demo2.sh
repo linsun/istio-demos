@@ -2,7 +2,7 @@
 
 . $(dirname ${BASH_SOURCE})/../util.sh
 SOURCE_DIR=$PWD
-TAG="1.10.0-rc.0"
+TAG="1.10.0"
 
 desc "Display web-api endpoints and routes"
 run "cd istio-$TAG/bin/"

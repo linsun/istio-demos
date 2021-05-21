@@ -2,7 +2,7 @@
 
 . $(dirname ${BASH_SOURCE})/../util.sh
 SOURCE_DIR=$PWD
-TAG="1.10.0-rc.1"
+TAG="1.10.0"
 desc "I have Istio 1.8.3 and a few pods on my cluster"
 run "kubectl get services -n istio-system"
 run "kubectl get pods -A"
