@@ -1,0 +1,283 @@
+~/go/src/github.com/linsun/istio-demos/istio-10-demo/istio-1.10.0-rc.0/bin   main ± ✭  k exec -it deploy/sleep sh                                                           (7d11h34m) 22:13:25
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+Defaulted container "sleep" out of: sleep, istio-proxy, istio-init (init)
+/ # telnet
+sh: telnet: not found
+
+/ # apk update
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.12/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.12/community/x86_64/APKINDEX.tar.gz
+v3.12.7-31-gc936d3a1c5 [http://dl-cdn.alpinelinux.org/alpine/v3.12/main]
+v3.12.7-26-g51dadb7de5 [http://dl-cdn.alpinelinux.org/alpine/v3.12/community]
+OK: 12761 distinct packages available
+
+/ # apk add busybox-extras
+(1/1) Installing busybox-extras (1.31.1-r20)
+Executing busybox-extras-1.31.1-r20.post-install
+Executing busybox-1.31.1-r19.trigger
+OK: 15 MiB in 31 packages
+
+/ # busybox-extras telnet my-release-zookeeper-0.my-release-zookeeper-headless.default.svc.cluster.local 2181
+Connected to my-release-zookeeper-0.my-release-zookeeper-headless.default.svc.cluster.local
+Connection closed by foreign host
+
+envoy config dump
+
+      "load_assignment": {
+       "cluster_name": "inbound|3888||",
+       "endpoints": [
+        {
+         "lb_endpoints": [
+          {
+           "endpoint": {
+            "address": {
+             "socket_address": {
+              "address": "127.0.0.1",
+              "port_value": 3888
+             }
+            }
+           }
+          }
+         ]
+        }
+       ]
+      }
+
+istio-proxy@my-release-zookeeper-1:/$ netstat -na | grep 3888
+tcp        0      0 10.96.7.7:3888          0.0.0.0:*               LISTEN
+
+istio-proxy@my-release-zookeeper-2:/$ netstat -na | grep 2181
+tcp        0      0 0.0.0.0:2181            0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37412         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37486         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37456         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37498         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37384         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37514         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37402         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37434         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37526         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37374         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37442         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:37464         TIME_WAIT
+
+Finally, note the two port numbers after each server name: " 2888" and "3888". Peers use the former port to connect to other peers. Such a connection is necessary so that peers can communicate, for example, to agree upon the order of updates. More specifically, a ZooKeeper server uses this port to connect followers to the leader. When a new leader arises, a follower opens a TCP connection to the leader using this port. Because the default leader election also uses TCP, we currently require another port for leader election. This is the second port in the server entry.
+
+$ ./zkServer.sh status
+/opt/bitnami/java/bin/java
+ZooKeeper JMX enabled by default
+Using config: /opt/bitnami/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Error contacting service. It is probably not running.
+$ pwd
+/opt/bitnami/zookeeper/bin
+$ ./zkServer.sh version
+/opt/bitnami/java/bin/java
+ZooKeeper JMX enabled by default
+Using config: /opt/bitnami/zookeeper/bin/../conf/zoo.cfg
+Apache ZooKeeper, version 3.7.0 2021-03-17 09:46 UTC
+
+$ for x in my-release-zookeeper-2.my-release-zookeeper-headless my-release-zookeeper-1.my-release-zookeeper-headless; do echo $x; echo srvr|nc $x 2181; echo; done
+my-release-zookeeper-2.my-release-zookeeper-headless
+This ZooKeeper instance is not currently serving requests
+
+my-release-zookeeper-1.my-release-zookeeper-headless
+This ZooKeeper instance is not currently serving requests
+
+
+$  ./zkCli.sh -server my-release-zookeeper-1.my-release-zookeeper-headless:2181
+/opt/bitnami/java/bin/java
+Connecting to my-release-zookeeper-1.my-release-zookeeper-headless:2181
+Welcome to ZooKeeper!
+JLine support is enabled
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTING) 0] create /zk_znode_1 sample_data
+KeeperErrorCode = ConnectionLoss for /zk_znode_1
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTING) 1] ls /
+KeeperErrorCode = ConnectionLoss for /
+
+istioctl x revision tag set canary --revision 1-10-0
+kubectl label namespace default istio.io/rev=canary --overwrite
+k label namespace default istio-injection-
+k get namespace -L istio-injection
+k rollout restart statefulset my-release-zookeeper
+
+k get pod my-release-zookeeper-0 -o yaml
+
+Istio 1.10
+
+ ~/go/src/github.com/linsun/istio-demos/istio-10-demo   main ± ✭  k exec -it my-release-zookeeper-2 -c istio-proxy sh                                                             (29m) 10:51:03
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+$ netstat -na | grep 2888
+tcp        0      0 10.96.8.10:2888         0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.6:42571         10.96.8.10:2888         ESTABLISHED
+tcp        0      0 10.96.8.10:2888         127.0.0.6:42571         ESTABLISHED
+tcp        0      0 127.0.0.6:42655         10.96.8.10:2888         ESTABLISHED
+tcp        0      0 10.96.8.10:2888         127.0.0.6:42655         ESTABLISHED
+$ netstat -na | grep 3888
+tcp        0      0 10.96.8.10:3888         0.0.0.0:*               LISTEN
+tcp        0      0 10.96.8.10:37876        10.96.6.11:3888         ESTABLISHED
+tcp        0      0 10.96.8.10:44872        10.96.7.10:3888         ESTABLISHED
+tcp        0      0 10.96.8.10:37878        10.96.6.11:3888         ESTABLISHED
+tcp        0      0 10.96.8.10:44870        10.96.7.10:3888         ESTABLISHED
+$ netstat -na | grep 2181
+tcp        0      0 0.0.0.0:2181            0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54508         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54616         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54664         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54526         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54532         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54578         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54634         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54588         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54610         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54550         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54560         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:54644         TIME_WAIT
+
+k exec -it my-release-zookeeper-2  sh                                                                           (30m) 10:52:20
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+$ for x in my-release-zookeeper-2.my-release-zookeeper-headless my-release-zookeeper-1.my-release-zookeeper-headless; do echo $x; echo srvr|nc $x 2181; echo; done
+my-release-zookeeper-2.my-release-zookeeper-headless
+Zookeeper version: 3.7.0-e3704b390a6697bfdf4b0bef79e3da7a4f6bac4b, built on 2021-03-17 09:46 UTC
+Latency min/avg/max: 0/0.0/0
+Received: 63
+Sent: 62
+Connections: 1
+Outstanding: 0
+Zxid: 0x100000000
+Mode: leader
+Node count: 5
+Proposal sizes last/min/max: -1/-1/-1
+
+my-release-zookeeper-1.my-release-zookeeper-headless
+Zookeeper version: 3.7.0-e3704b390a6697bfdf4b0bef79e3da7a4f6bac4b, built on 2021-03-17 09:46 UTC
+Latency min/avg/max: 0/0.0/0
+Received: 59
+Sent: 58
+Connections: 1
+Outstanding: 0
+Zxid: 0x0
+Mode: follower
+Node count: 5
+
+$ cd /opt/bitnami/zookeeper/bin
+$ ./zkServer.sh version
+/opt/bitnami/java/bin/java
+ZooKeeper JMX enabled by default
+Using config: /opt/bitnami/zookeeper/bin/../conf/zoo.cfg
+Apache ZooKeeper, version 3.7.0 2021-03-17 09:46 UTC
+$ ./zkCli.sh -server my-release-zookeeper-1.my-release-zookeeper-headless:2181
+/opt/bitnami/java/bin/java
+Connecting to my-release-zookeeper-1.my-release-zookeeper-headless:2181
+Welcome to ZooKeeper!
+JLine support is enabled
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTING) 0]
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTED) 0] create /zk_znode_1 sample_data
+Created /zk_znode_1
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTED) 1] ls
+ls [-s] [-w] [-R] path
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTED) 2] ls /
+[zk_znode_1, zookeeper]
+[zk: my-release-zookeeper-1.my-release-zookeeper-headless:2181(CONNECTED) 3] quit
+
+WATCHER::
+
+WatchedEvent state:Closed type:None path:null
+2021-05-14 14:54:53,961 [myid:] - ERROR [main:ServiceUtils@42] - Exiting JVM with code 0
+$ ./zkCli.sh -server my-release-zookeeper-0.my-release-zookeeper-headless:2181
+/opt/bitnami/java/bin/java
+Connecting to my-release-zookeeper-0.my-release-zookeeper-headless:2181
+Welcome to ZooKeeper!
+JLine support is enabled
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: my-release-zookeeper-0.my-release-zookeeper-headless:2181(CONNECTED) 0] ls /
+[zk_znode_1, zookeeper]
+[zk: my-release-zookeeper-0.my-release-zookeeper-headless:2181(CONNECTED) 1] quit
+
+WATCHER::
+
+WatchedEvent state:Closed type:None path:null
+
+
+apply mtls
+kubectl apply -n default -f - <<EOF
+apiVersion: "security.istio.io/v1beta1"
+kind: "PeerAuthentication"
+metadata:
+  name: "default"
+spec:
+  mtls:
+    mode: STRICT
+EOF
+
+test from sleep pod
+k exec -it deploy/sleep sh
+
+/ # for x in my-release-zookeeper-0.my-release-zookeeper-headless my-release-zookeeper-1.my-release-zookeeper-headless my-release-zookeeper-2.my-release-zookeeper-headless; do echo $x; echo srvr|nc $x 2181; echo; done
+my-release-zookeeper-2.my-release-zookeeper-headless
+Zookeeper version: 3.7.0-e3704b390a6697bfdf4b0bef79e3da7a4f6bac4b, built on 2021-03-17 09:46 UTC
+Latency min/avg/max: 0/0.0/0
+Received: 26
+Sent: 25
+Connections: 1
+Outstanding: 0
+Zxid: 0x200000002
+Mode: leader
+Node count: 6
+Proposal sizes last/min/max: 48/48/48
+
+my-release-zookeeper-1.my-release-zookeeper-headless
+Zookeeper version: 3.7.0-e3704b390a6697bfdf4b0bef79e3da7a4f6bac4b, built on 2021-03-17 09:46 UTC
+Latency min/avg/max: 0/0.0/0
+Received: 26
+Sent: 25
+Connections: 1
+Outstanding: 0
+Zxid: 0x200000002
+Mode: follower
+Node count: 6
+
+
+
+
+1.9.
+
+netstat -na
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State
+tcp        0      0 0.0.0.0:15021           0.0.0.0:*               LISTEN
+tcp        0      0 10.96.7.7:3888          0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:15090           0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:41751           0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.1:15000         0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:15001           0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:15006           0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:2181            0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38774         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38732         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38790         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38878         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38926         TIME_WAIT
+tcp        0      0 10.96.7.7:50270         10.100.3.137:15012      ESTABLISHED
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38816         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38748         TIME_WAIT
+tcp        0      0 127.0.0.1:49254         127.0.0.1:15020         ESTABLISHED
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38840         TIME_WAIT
+tcp        0      0 127.0.0.1:49226         127.0.0.1:15020         ESTABLISHED
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38862         TIME_WAIT
+tcp        0      0 10.96.7.7:49860         10.100.3.137:15012      ESTABLISHED
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38908         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38952         TIME_WAIT
+tcp        0      0 127.0.0.1:2181          127.0.0.1:38966         TIME_WAIT
+tcp6       0      0 :::15020                :::*                    LISTEN
+tcp6       0      0 127.0.0.1:15020         127.0.0.1:49254         ESTABLISHED
+tcp6       0      0 127.0.0.1:15020         127.0.0.1:49226         ESTABLISHED
+
